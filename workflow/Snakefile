@@ -1,0 +1,263 @@
+import pandas as pd
+import datetime
+from pathlib import Path
+
+# Helper function for metadata file reading
+# ----------------------------------------------------
+_READERS = {
+    ".csv":  pd.read_csv,
+    ".tsv":  lambda p: pd.read_csv(p, sep="\t"),
+    ".txt":  lambda p: pd.read_csv(p, sep="\t"),
+    ".xlsx": pd.read_excel,
+    ".xls":  pd.read_excel,
+}
+
+def read_metadata(path: str | Path) -> pd.DataFrame:
+    print("Reading metadata...")
+    path = Path(path)
+    try:
+        reader = _READERS[path.suffix.lower()]
+    except KeyError:
+        raise ValueError(
+            f"Unsupported metadata file format: {path.suffix}. "
+            f"Supported formats: {', '.join(_READERS)}"
+        )
+    print("Metadata successfully read.")
+    return reader(path)
+
+# Extract sample metadata
+# -----------------------------------------------------
+df = read_metadata(config["sample_metadata"])
+
+# Data validation
+if df[config["sample_column"]].duplicated().any():
+    raise ValueError("Duplicate sample IDs detected in metadata table!")
+
+if not config["sample_column"] in df.columns:
+    raise ValueError("Sample ID column not present in metadata table!")
+
+SAMPLES = (
+    df[config["sample_column"]]
+    .dropna()
+    .astype(str)
+    .tolist()
+)
+
+# Define final workflow outputs
+# -----------------------------------------------------
+LOGS = Path(config["directories"]["logs"])
+MAPPED = Path(config["directories"]["mapped"])
+MULTIQC_RAW = Path(config["directories"]["qc_raw"]) / "multiqc"
+MUTLTIQC_TRIMMED = Path(config["directories"]["qc_trimmed"])
+
+rule all:
+    input:
+        quant=expand(
+            str(MAPPED / "{sample}_quant" / "quant.sf"),
+            sample=SAMPLES
+        ),
+        raw_multiqc=MULTIQC_RAW / "raw_multiqc_report.html",
+        trimmed_multiqc=MUTLTIQC_TRIMMED / "trimmed_multiqc_report.html",
+        validate=expand(
+            LOGS / "validate" / "{sample}_R{nb}" / ".{sample}_R{nb}_done",
+            sample=SAMPLES,
+            nb=[1, 2]
+        )
+
+    message:
+        "Building DAG..."
+
+# Validate input files
+# -----------------------------------------------------
+READ_PATTERN = config["read_pattern"]
+READS = Path(config["directories"]["reads"])
+
+rule validate:
+    input:
+        sample_list=expand(
+            READS / READ_PATTERN,
+            sample=SAMPLES,
+            nb=[1, 2]
+        )
+
+    output:
+        logs=directory(LOGS / "validate" / "{sample}_R{nb}"),
+        done=LOGS / "validate" / "{sample}_R{nb}" / ".{sample}_R{nb}_done"
+
+    message:
+        "Validating that {READ_PATTERN} uniquely identifies input files in directory: {READS}..."
+
+    run:
+        if not all([sample.is_file() for sample in sample_list]):
+            raise FileNotFoundError("Read pattern did not correctly resolve all input files!")
+
+        done_file = LOGS / "validate" / "{sample}_R{nb}" / ".{sample}_R{nb}_done"
+        shell("touch {done_file}; echo 'file validated' > {done_file}")
+        print("Validation done. All checks passed.")
+
+# Run FASTQC on raw reads
+# -----------------------------------------------------
+QC_RAW = Path(config["directories"]["qc_raw"]) / "fastqc"
+
+rule fastqc_raw:
+    input:
+        READS / READ_PATTERN
+
+    output:
+        html=QC_RAW / "{sample}_R{nb}_fastqc.html",
+        zip=QC_RAW / "{sample}_R{nb}_fastqc.zip",
+        raw_fastqc_dir=directory(QC_RAW / "{sample}_R{nb}_fastqc")
+
+    message:
+        "Running FASTQC for sample {wildcards.sample} and read {wildcards.nb}..."
+
+    log:
+        Path(config["directories"]["logs"]) / "fastqc" / "{sample}_R{nb}.log"
+
+    shell:
+        """
+        mkdir -p {QC_RAW}
+        fastqc {input} -o {output.raw_fastqc_dir} \
+        2> {log}
+        echo 'FASTQC done'
+        """
+
+# Aggregate FASTQC report with MultiQC for raw reads
+# -----------------------------------------------------
+
+rule multiqc_raw:
+    input:
+        expand(QC_RAW / "{sample}_R{nb}_fastqc", sample=SAMPLES, nb=[1,2])
+
+    output:
+        MULTIQC_RAW / "raw_multiqc_report.html"
+
+    log:
+        Path(config["directories"]["logs"]) / "multiqc" / "raw"
+
+    message:
+        "Compiling FASTQC reports with MultiQC"
+
+    params:
+        DT=datetime.datetime.now()
+
+    shell:
+        """
+        multiqc \
+        --dirs {input} \
+        --filename {output} \
+        --title "Pre-processing FastQC multiqc report {params.DT}" \
+        2> {log}
+        echo 'MultiQC done'
+        """
+
+# Trim reads using fastp
+# -----------------------------------------------------
+TRIMMED = Path(config["directories"]["trimmed"])
+PROCESSED_READS = TRIMMED / "trimmed_reads"
+FASTP_REPORT = TRIMMED / "reports"
+MIN_PHRED = config["fastp"]["min_phred"]
+THREADS = config["fastp"]["threads"]
+FASTP_ARGS = " ".join(config["fastp"]["args"])
+
+rule fastp:
+    input:
+        R1_IN=lambda wildcards: READS / READ_PATTERN.format(sample=wildcards.sample, nb=1),
+        R2_IN=lambda wildcards: READS / READ_PATTERN.format(sample=wildcards.sample, nb=2)
+
+    output:
+        R1_OUT=PROCESSED_READS / "{sample}_trimmed_R1.fastq.gz",
+        R2_OUT=PROCESSED_READS / "{sample}_trimmed_R2.fastq.gz",
+        fastp_report_dir=directory(FASTP_REPORT / "{sample}_trimmed"),
+        HTML_OUT=FASTP_REPORT / "{sample}_trimmed" / "{sample}_trimmed.html",
+        JSON_OUT=FASTP_REPORT / "{sample}_trimmed" / "{sample}_trimmed.json"
+
+    log:
+        Path(config["directories"]["logs"]) / "fastp" / "{sample}.log"
+
+    message:
+        "Running FASTP trimming for sample {wildcards.sample}"
+
+    params:
+        DT=datetime.datetime.now()
+
+    shell:
+        """
+        mkdir -p {PROCESSED_READS} {FASTP_REPORT}
+        fastp \
+        -i {input.R1_IN} \
+        -I {input.R2_IN}  \
+        -o {output.R1_OUT} \
+        -O {output.R2_OUT} \
+        -q {MIN_PHRED} \
+        --thread {THREADS} \
+        {FASTP_ARGS} \
+        --json "{output.JSON_OUT}" \
+        --html "{output.HTML_OUT}" \
+        --report_title "fastp_sample_{wildcards.sample}_{params.DT}" \
+        2> {log}
+        echo 'fastp done'
+        """
+
+# Aggregate post-trimming fastp HTML reports
+# -----------------------------------------------------
+
+rule multiqc_trimmed:
+    input:
+        expand(FASTP_REPORT / "{sample}_trimmed", sample=SAMPLES)
+
+    output:
+        MUTLTIQC_TRIMMED / "trimmed_multiqc_report.html"
+
+    log:
+        Path(config["directories"]["logs"]) / "multiqc" / "trimmed"
+
+    message:
+        "Compiling fastp trimming reports with MultiQC"
+
+    params:
+        DT=datetime.datetime.now()
+
+    shell:
+        """
+        multiqc \
+        --dirs {input} \
+        --filename {output} \
+        --title "Post-trimming multiqc report {params.DT}" \
+        2> {log}
+        echo 'MultiQC done'
+        """
+
+# Salmon partial SA read mapping
+# -----------------------------------------------------
+SALMON_ARGS = " ".join(config["salmon"]["args"])
+
+rule salmon:
+    input:
+        R1_IN=rules.fastp.output.R1_OUT,
+        R2_IN=rules.fastp.output.R2_OUT
+
+    output:
+        OUT=MAPPED / "{sample}_quant" / "quant.sf"
+
+    log:
+        Path(config["directories"]["logs"]) / "salmon" / "{sample}.log"
+
+    message:
+        "Running Salmon mapping and quantification for sample {wildcards.sample}"
+
+    params:
+        INDEX=config["salmon"]["index"],
+        outdir=MAPPED / "{sample}_quant"
+
+    shell:
+        """
+        salmon quant \
+        -i {params.INDEX} \
+        -1 {input.R1_IN} \
+        -2 {input.R2_IN} \
+        -o {params.outdir} \
+        {SALMON_ARGS} \
+        2> {log} 
+        echo 'Salmon quant done'
+        """

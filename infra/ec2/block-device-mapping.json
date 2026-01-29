@@ -1,0 +1,10 @@
+[
+  {
+    "DeviceName": "/dev/xvda",
+    "Ebs": {
+      "VolumeSize": __EBS_VOLUME_SIZE__,
+      "VolumeType": "__EBS_VOLUME_TYPE__",
+      "DeleteOnTermination": true
+    }
+  }
+]

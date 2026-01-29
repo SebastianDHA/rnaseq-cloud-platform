@@ -1,0 +1,28 @@
+project_name: SN_microglia_il1b
+
+directories:
+  reads: "90-1003430144/00_fastq"
+  qc_raw: "results/qc/raw"
+  trimmed: "results/trimming"
+  qc_trimmed: "results/qc/trimmed"
+  mapped: "results/salmon/mapped_reads"
+  logs: "results/logs"
+
+# Read pattern requires wildcards {sample}=str and {nb}=[1, 2]
+read_pattern: "{sample}_R{nb}_001.fastq.gz"
+sample_metadata: "IL1bEx-Microglia info.xlsx"
+sample_column: "Tube"
+
+fastp:
+  min_phred: 20
+  threads: 4
+  args:
+    - "--trim_poly_g"
+
+salmon:
+  index: "output/salmon/salmon_partial_sa_index_2024-07-24"
+  args:
+    - "-validateMappings"
+    - "--gcBias"
+    - "--seqBias"
+    - "-l A"
