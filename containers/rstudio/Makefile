@@ -1,7 +1,7 @@
 .ONESHELL:
 
 IMAGE_REPO := sebastiandha/rnaseq-cloud-rstudio
-IMAGE_TAG := 1.0.0
+IMAGE_TAG := 1.0.1
 DIGEST_FILE := image-digest.txt
 
 build:

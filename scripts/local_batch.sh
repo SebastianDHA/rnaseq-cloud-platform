@@ -16,7 +16,7 @@ cp config.yaml local-work/
 # -----------------------------
 
 # Fetch docker image digest
-IMAGE_DIGEST=$(cat containers/batch/image-digests.txt)
+IMAGE_DIGEST=$(cat containers/batch/image-digest.txt)
 
 docker run --rm \
   --mount type=bind,source=$(PWD)/local-work,target=/work \

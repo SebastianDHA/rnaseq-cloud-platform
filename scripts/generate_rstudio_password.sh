@@ -25,8 +25,10 @@ aws ssm put-parameter \
   --value "${PASSWORD}" \
   --overwrite
 
+echo ""
 echo "======================================================"
 echo "RStudio login credentials"
 echo "Username: rstudio"
 echo "Password: ${PASSWORD}"
 echo "======================================================"
+echo ""

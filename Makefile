@@ -1,4 +1,8 @@
+SHELL := /bin/bash
 .ONESHELL:
+
+BUCKET_NAME := $(shell sh -c '. infra/config/env.sh && printf "%s" "$$BUCKET_NAME"')
+export BUCKET_NAME
 
 # -----------------------------
 # 1. Project configuration
@@ -47,10 +51,10 @@ aws-interactive:
 
 # Example usage: make local-batch DATA_DIR=path/to/myproject
 local-batch:
-	@.scripts/local_batch.sh
+	@./scripts/local_batch.sh
 
 local-interactive:
-	@.scripts/local_interactive.sh
+	@./scripts/local_interactive.sh
 
 # -----------------------------
 # AWS resource helpers
@@ -71,15 +75,12 @@ get-ec2:
 # S3
 # EC2 -> S3 sync
 to-s3:
-	@source ./infra/config/env.sh
-	aws s3 sync "/work" "s3://${BUCKET_NAME}/work"
+	aws s3 sync "/work" "s3://$(BUCKET_NAME)/work"
 
 # S3 -> EC2 sync
 from-s3:
-	@source ./infra/config/env.sh
-	aws s3 sync "s3://${BUCKET_NAME}/work" "/work"
+	aws s3 sync "s3://$(BUCKET_NAME)/work" "/work"
 
 # Fetch S3 bucket name
 get-s3:
-	@source ./infra/config/env.sh
-	@echo ${BUCKET_NAME}
+	@echo $(BUCKET_NAME)

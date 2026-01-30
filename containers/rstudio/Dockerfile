@@ -17,4 +17,4 @@ COPY r-packages.R /tmp/r-packages.R
 RUN Rscript /tmp/r-packages.R && rm /tmp/r-packages.R
 
 ## Set working R directory
-WORKDIR /home/rstudio
+WORKDIR /work

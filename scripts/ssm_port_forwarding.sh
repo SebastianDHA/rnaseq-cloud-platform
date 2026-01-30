@@ -16,12 +16,14 @@ INSTANCE_ID=$(cat infra/.state/ec2_instance_id)
 
 echo "Launching SSM port-forwarding..."
 
+echo ""
 echo "======================================================"
 echo "RStudio runs on: http://localhost:8787"
 echo "Login with one-time password and username above"
 echo "Exit with CTRL/CMD+C"
 echo "Remember to stop EC2 instance when done!"
 echo "======================================================"
+echo ""
 
 aws ssm start-session \
   --target "${INSTANCE_ID}" \
