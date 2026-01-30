@@ -46,7 +46,7 @@ echo "Sync complete."
 IMAGE_DIGEST=$(cat /opt/containers/batch/image-digest.txt)
 
 # Run batch container & mount work directory
-docker run \
+sudo docker run \
   --rm \
   --mount type=bind,source=/work,target=/work \
   "${IMAGE_DIGEST}" \

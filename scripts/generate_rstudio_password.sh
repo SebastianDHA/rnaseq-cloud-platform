@@ -7,11 +7,7 @@ set -euo pipefail
 # Configuration
 # -----------------------------
 
-source config/env.sh
-
-# Ensure SSM agent online
-echo "Waiting for SSM agent..."
-aws ssm wait instance-online --instance-ids "${INSTANCE_ID}"
+source infra/config/env.sh
 
 # -----------------------------
 # Password
@@ -29,8 +25,8 @@ aws ssm put-parameter \
   --value "${PASSWORD}" \
   --overwrite
 
-echo "==========================="
+echo "======================================================"
 echo "RStudio login credentials"
 echo "Username: rstudio"
 echo "Password: ${PASSWORD}"
-echo "==========================="
+echo "======================================================"

@@ -60,15 +60,13 @@ aws ec2 authorize-security-group-egress \
   --group-id "${EC2_SG_ID}" \
   --protocol tcp \
   --port 443 \
-  --cidr 0.0.0.0/0 \
-  --description "Allow outbound HTTPS via port 443 only"
+  --cidr 0.0.0.0/0
 
 # Revoke default egress rule (all protocols; all ports; all cidr)
 aws ec2 revoke-security-group-egress \
   --group-id "${EC2_SG_ID}" \
   --protocol -1 \
-  --cidr 0.0.0.0/0 \
-  --description "Revoke default egress rule"
+  --cidr 0.0.0.0/0
 
 # -----------------------------
 # VPC Endpoint security group

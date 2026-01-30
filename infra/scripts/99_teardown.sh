@@ -30,7 +30,7 @@ if [ -n "${INSTANCE_IDS}" ]; then
 fi
 
 # Remove instance ID cache
-rm -r .state
+rm -fr .state
 
 # -----------------------------
 # Delete VPC endpoints

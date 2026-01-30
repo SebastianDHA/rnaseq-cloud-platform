@@ -25,9 +25,6 @@ dnf install -y docker
 systemctl enable docker
 systemctl start docker
 
-# Allow ec2-user to run Docker (only root by default, else requires sudo)
-usermod -aG docker ec2-user
-
 # Add SSM Agent explicitly (in case not included by default in AMI)
 systemctl enable amazon-ssm-agent
 systemctl start amazon-ssm-agent
@@ -55,11 +52,22 @@ aws s3 cp s3://${BUCKET_NAME}/containers/ /opt/containers/ --recursive
 aws s3 cp s3://${BUCKET_NAME}/work/ /work --recursive
 
 # Make scripts executable
-chmod +x /opt/scripts/*.sh
-chmod +x /work/*.sh
+chmod +x /opt/scripts/*
+chmod +x /work/*
 
 # Pull docker images by digest
+echo "Pulling docker images..."
 docker pull "$(cat /opt/containers/batch/image-digest.txt)"
 docker pull "$(cat /opt/containers/rstudio/image-digest.txt)"
+echo "Successfully pulled images."
+
+echo "Bootstrap complete!"
+
+# Write bootstrap success marker to SSM Parameter Store for client-side verification of successful provisioning and configuration
+aws ssm put-parameter \
+  --name "/${PROJECT}/${TAG}/bootstrap/complete" \
+  --type String \
+  --value "Bootstrap successful: $(date -Is)" \
+  --overwrite
 
 # Confirm successful launch by inspecting "/var/log/cloud-init-output.log"

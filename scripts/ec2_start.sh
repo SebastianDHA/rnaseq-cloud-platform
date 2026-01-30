@@ -10,7 +10,7 @@ set -euo pipefail
 source ./infra/config/env.sh
 
 # Retrieved cached instance ID
-STATE_FILE=".state/ec2_instance_id"
+STATE_FILE="infra/.state/ec2_instance_id"
 if [[ -f ${STATE_FILE} ]]; then
   INSTANCE_ID=$(cat "${STATE_FILE}")
 else

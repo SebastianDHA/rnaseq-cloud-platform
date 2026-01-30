@@ -13,10 +13,10 @@ export DATA_DIR ?= $(PWD)
 
 provision:
 	$(MAKE) -C infra up
-	./scripts/ec2_stop.sh
+	@./scripts/ec2_stop.sh
 
 deprovision:
-	./scripts/ec2_stop.sh
+	@./scripts/ec2_stop.sh
 	$(MAKE) -C infra down
 
 # -----------------------------
@@ -32,14 +32,14 @@ pull-images:
 # -----------------------------
 
 aws-batch:
-	./scripts/ec2_start.sh
-	./scripts/ssm_submit_batch.sh
+	@./scripts/ec2_start.sh
+	@./scripts/ssm_submit_batch.sh
 
 aws-interactive:
-	./scripts/ec2_start.sh
-	./scripts/generate_rstudio_password.sh
-	./scripts/ssm_launch_rstudio.sh
-	./scripts/ssm_port_forwarding.sh
+	@./scripts/ec2_start.sh
+	@./scripts/generate_rstudio_password.sh
+	@./scripts/ssm_launch_rstudio.sh
+	@./scripts/ssm_port_forwarding.sh
 
 # -----------------------------
 # 3b. Local execution modes
@@ -47,10 +47,10 @@ aws-interactive:
 
 # Example usage: make local-batch DATA_DIR=path/to/myproject
 local-batch:
-	.scripts/local_batch.sh
+	@.scripts/local_batch.sh
 
 local-interactive:
-	.scripts/local_interactive.sh
+	@.scripts/local_interactive.sh
 
 # -----------------------------
 # AWS resource helpers
@@ -59,27 +59,27 @@ local-interactive:
 # EC2
 # Start & stop instance
 start:
-	./scripts/ec2_start.sh
+	@./scripts/ec2_start.sh
 
 stop:
-	./scripts/ec2_stop.sh
+	@./scripts/ec2_stop.sh
 
 # Fetch EC2 instance ID
 get-ec2:
-	@cat .state/ec2_instance_id
+	@cat infra/.state/ec2_instance_id
 
 # S3
 # EC2 -> S3 sync
 to-s3:
-	source ./infra/config/env.sh
+	@source ./infra/config/env.sh
 	aws s3 sync "/work" "s3://${BUCKET_NAME}/work"
 
 # S3 -> EC2 sync
 from-s3:
-	source ./infra/config/env.sh
+	@source ./infra/config/env.sh
 	aws s3 sync "s3://${BUCKET_NAME}/work" "/work"
 
 # Fetch S3 bucket name
 get-s3:
-	source ./infra/config/env.sh
+	@source ./infra/config/env.sh
 	@echo ${BUCKET_NAME}

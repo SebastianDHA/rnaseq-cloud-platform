@@ -24,7 +24,7 @@ PASSWORD=$(aws ssm get-parameter \
 IMAGE_DIGEST=$(cat /opt/containers/rstudio/image-digest.txt)
 
 # Launch rocker-rstudio image in background (-d) to allow ssm command to return while container still runs
-docker run \
+sudo docker run \
   -d \
   --rm \
   -p 8787:8787 \

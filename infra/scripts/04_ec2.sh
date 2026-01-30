@@ -67,7 +67,7 @@ aws ec2 run-instances \
       "DeviceIndex": 0,
       "SubnetId": "'"${SUBNET_ID}"'",
       "Groups": ["'"${SG_ID}"'"],
-      "AssociatePublicIpAddress": false
+      "AssociatePublicIpAddress": true
     }
   ]' \
   --user-data file:///tmp/user_data.sh \
@@ -93,6 +93,7 @@ INSTANCE_ID=$(aws ec2 describe-instances \
     "Name=tag:Name,Values=${INSTANCE_NAME}" \
     "Name=tag:Project,Values=${PROJECT}" \
     "Name=tag:Env,Values=${TAG}" \
+    "Name=instance-state-name,Values=pending,running" \
   --query "Reservations[0].Instances[0].InstanceId" \
   --output text)
 

@@ -1,4 +1,4 @@
-.PHONY: s3 iam sg ec2 up down
+.PHONY: s3 iam sg ec2 check up down
 
 s3:
 	./scripts/01_s3.sh
@@ -12,7 +12,10 @@ sg:
 ec2:
 	./scripts/04_ec2.sh
 
-up: s3 iam sg ec2
+check:
+	./scripts/05_bootstrap_check.sh
+
+up: s3 iam sg ec2 check
 	@echo "Infrastructure provisioned"
 
 down:

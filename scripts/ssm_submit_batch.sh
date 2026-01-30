@@ -8,11 +8,7 @@ set -euo pipefail
 # -----------------------------
 
 # Fetch cached instance ID
-INSTANCE_ID=$(cat .state/ec2_instance_id)
-
-# Ensure SSM agent online
-echo "Waiting for SSM agent..."
-aws ssm wait instance-online --instance-ids "${INSTANCE_ID}"
+INSTANCE_ID=$(cat infra/.state/ec2_instance_id)
 
 # -----------------------------
 # Dispatch command via SSM
@@ -24,7 +20,7 @@ COMMAND_ID=$(aws ssm send-command \
   --instance-ids "${INSTANCE_ID}" \
   --document-name AWS-RunShellScript \
   --comment "RNA-seq batch run" \
-  --parameters commands=["/opt/scripts/run_batch.sh"] \
+  --parameters commands=["sudo /opt/scripts/run_batch.sh"] \
   --query 'Command.CommandId' \
   --output text)
 
